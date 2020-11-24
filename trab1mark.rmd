@@ -1,0 +1,253 @@
+---
+title: "Trabalho 1"
+subtitle: "SME0808 - Séries Temporais e Aprendizado Dinâmico"
+author: 
+- "Arthur Barbosa -- Nº USP: 8954937" 
+- "Bruno Ricardo Pereira dos Santos Santos -- Nº USP: 10288640"
+- "Sidnei Gazola Junior -- Nº USP: 9378888"
+date: "`r format(Sys.time(), '%d de %B de %Y')`"
+header-includes:
+   - \usepackage{float}
+   - \usepackage{here}
+   - \usepackage[brazil]{babel}
+   - \usepackage{caption}
+   - \usepackage{mathtools}
+   - \usepackage{setspace}\onehalfspacing
+output:
+  pdf_document: default
+  fig_caption: yes
+  urlcolor: blue
+  linkcolor: blue
+  fontsize: 12pt
+  geometry: margin=0.75in
+---
+
+\newcommand{\mar}{\hspace{.3cm}}
+\newcommand{\ld}{\vspace{.15cm}}
+
+```{r setup}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, 
+                      error = FALSE,fig.dim=c(6,4), fig.pos = "H")
+```
+
+```{r, echo = FALSE, results = 'hide'}
+rm(list = ls())
+ls()
+```
+
+```{r}
+library(tidyverse)
+library(forecast)
+library(lubridate)
+library(tinytex)
+library(fpp2)
+library(e1071)
+```
+
+# 1.a)
+
+
+```{r}
+
+co2 <- read_csv("co2_mm_mlo.csv", col_types = cols(year = col_integer(),
+                                                   month = col_integer()))
+
+co2 <- filter(co2,co2$average > 200)
+
+ggplot(data = co2,aes(x=co2$`decimal date`,y=average,color=year)) +
+  geom_line() +
+  theme_bw() +
+  theme(legend.position = "none")  +
+  ggtitle("CO2") +
+  labs(x="Data",y= "CO2")
+
+```
+
+Analisando a série é possível identificar uma tendência de alta e variações periódicas anuais dos níveis de co2. Essas variações podem ser melhor vistas por meio do gráfico de sazonalidade.
+
+## Análise sazonal
+
+```{r}
+MM= read.csv2(file = "media mensal.csv ")
+#criando a série temporal
+MMS= ts(MM[,3], start = c(1959), end = c(2020), frequency = 12)
+View(MMS)
+#Avaliando sazonalidade
+ggseasonplot(MMS) 
+
+```
+
+No mês de agosto há uma concentração maior de co2 e todos os anos, excetuando-se os primeiros, obedecem a um mesmo padrão sazonal.
+
+# 1.b)
+
+Obtendo os dados do Dólar, foi possível obter:
+
+```{r}
+#Lendo o arquivo
+D = read_delim("DOLAR.csv", ";", escape_double = FALSE, 
+    col_types = cols(Data = col_date(format = "%d/%m/%Y"), 
+        `31/12/1999` = col_date(format = "%d/%m/%Y")), 
+    trim_ws = TRUE, skip = 1252)
+
+names(D) = c("data", "taxa")
+
+D <- data.frame (D ,year= year(D$data))
+
+ggplot(data = D,aes(x=data, y=taxa, color = year)) +
+  geom_line() +
+  theme_bw() +
+  theme(legend.position = "none")  +
+  ggtitle("Dólar x Real") +
+  labs(x="Tempo ",y= "Preço")
+```
+
+Primeiramente analisando o gráfico da série é perceptível alguns deslocamentos súbitos no preço do dólar, que pode indicar uma aversão a risco e consequente retirada de investimentos de países emergentes como o Brasil. Nos períodos de 2002, 2008, 2015 e 2020, ocorreram respectivamente medo do discurso do Lula durante a campanha, crise do sub-prime, crise fiscal brasileira e a pandemia causada pelo covid-19.
+
+## Análise sazonal
+
+```{r}
+
+#criando a série temporal
+DS= ts(D[,2], start = c(2000), end = c(2020), frequency = 257)
+
+#Avaliando a série
+#ts.plot(DS, lwd = 1, col = "red", xlab = "Tempo", ylab = "Preço")
+
+#Avaliando sazonalidade
+ggseasonplot(DS, s= 1000 ) 
+```
+
+Analisando o gráfico referente a sazonalidade do Dolar, nenhum padrão estrutural foi observado. O que pode-se notar é um forte aumento do Dolar em anos onde fenômenos de natureza direta ou indiretamente ligada a economia ocorrem, fazendo com que os picos de valores acontecem nos meses próximos ao fim. A exemplo, podemos notar os anos de 2002, com a eleição presidencial e o ano de 2020, com a pandemia global.
+
+## Relação Dólar e Ibovespa
+
+É possível ver relação entre o Dólar o os dados do Ibovespa da próxima questão.
+
+```{r}
+#Entendemos dados tratados como dados que apresentam a mesma frequencia de coleta dos dados no mesmo intervalo de tempo
+
+#Leitura dos dados: criação do dataframe
+D = read.csv2(file = "DOLAR_tratado.csv")
+I = read.csv2(file = "IBOVESPA_tratado.csv")
+
+#Transformação dos dados em séries temporais 
+Ds= ts(D, start = c(2005), end = c(2020), frequency = 258)
+Is = ts(I, start = c(2005), end = c(2020), frequency = 258)
+
+#Normalização dos dados com base em seus valores máximos 
+Dsn = (max(Ds)^(-1)) * Ds
+Isn = (max(Is)^(-1)) * Is
+
+#Plot dos dados em conjunto para análise gráfica 
+#ts.plot(Isn, col = "red", main = "Índice IBOVESPA")
+ts.plot(Dsn,Isn, col = c("green","red"), main = "Relação: Dolar x IBOVESPA")
+legend("topleft", legend=c("Dolar", "IBOVESPA"),
+       fill=c("green", "red"), bty="n")
+```
+
+
+A relação entre preço do Dolar e o Índice IBOVESPA pode ser observada no gráfico. 
+As duas variáveis, aparentemente, apresentam tendências inversas, ou seja, o crescimento do índice IBOVESPA é acompanhado por um decrescimento do preço do Dolar. O contrário também é verdadeiro. 
+Ambas as variáveis cresceram ao longo dos anos, mas respeitaram a tendência inversa de crescimento entre si.
+Por se tratar de variáveis que representam fenômenos econômicos do país, recomenda-se uma análise em conjunto a outras variáveis que se propôem ao mesmo objetivo, a exemplo, a taxa SELIC. 
+
+
+\newpage
+
+# 2.a)
+
+
+```{r}
+
+ipea = read_csv("ipeadata[07-09-2020].csv", 
+                col_types = cols(`02/01/2005` = col_date(format = "%d/%m/%Y")), 
+                skip = 3836)
+names(ipea) = c("data", "indice")
+
+ipea <- filter(ipea,ipea$indice <200000)
+
+ipea <- data.frame (ipea ,year= year(ipea$data))
+
+ggplot(data = ipea,aes(x=data, y=indice, color = year)) +
+  geom_line() +
+  theme_bw() +
+  theme(legend.position = "none")  +
+  ggtitle("IBOVESPA") +
+  labs(x="Data ",y= "IBOVESPA")
+```
+
+É uma série com tendência de crescimento no longo prazo, com duas quedas abruptas que correspondem à crise do sub-prime em 2008 e à pandemia em 2020, e com uma tendência de queda entre os anos de 2011 e 2016.
+
+# 2.b)
+
+```{r}
+
+logr=diff(log(ipea$indice),lag = 1)
+
+ipea <- data.frame (ipea ,logr = c(0,logr))
+
+ggplot(data = ipea,aes(x=data, y=logr, color = year)) +
+  geom_line() +
+  theme_bw() +
+  theme(legend.position = "none")  +
+  ggtitle("Log-retorno IBOVESPA") +
+  labs(x="Data ",y= "Log-retorno")
+```
+
+Com o gráfico de log-retorno apresenta suas maiores amplitudes nas crises de 2008 e 2020. 
+
+## Correlograma
+
+```{r}
+
+acf(logr, lag.max = 10, main = "Correlograma log-retorno", xlab = "Defasagem", ylab = "Autocorrelação")
+
+```
+
+Analisando o correlograma do log-retorno, percebe-se que os valores são próximos de zero, logo, que os valores não possuem uma autocorrelação significativa.
+
+# 2.c)
+
+```{r}
+hist(logr, freq = FALSE, main = "Histograma  log-retorno",
+     xlab = expression(X), ylab = "Densidade")
+
+### Coeficiente de assimetria de Fisher-Pearson
+skewness(logr, type = 1)
+### Coeficiente momento de curtose
+kurtosis(logr, type = 1) 
+```
+
+Como o Coeficiente de assimetria de Fisher-Pearson < 0, a assimetria é negativa ou à esquerda.
+Já o Coeficiente momento de curtose > 0, então a distribuição é leptocúrtica, possui a curva da função de distribuição mais afunilada com um pico mais alto do que a distribuição normal. Essa distribuição possui caudas pesadas, então a funçao de distribuição é mais achatada do que a distribuição normal.
+
+
+# 2.d)
+
+```{r}
+
+qlogr= logr^2
+
+ipea <- data.frame (ipea ,qlogr = c(0,qlogr))
+
+ggplot(data = ipea,aes(x=data, y=qlogr, color = year)) +
+  geom_line() +
+  theme_bw() +
+  theme(legend.position = "none")  +
+  ggtitle("Quadrado do log-retorno IBOVESPA") +
+  labs(x="Data ",y= "Quadrado do log-retorno")
+```
+
+Ao contrário da análise feita através do log-retorno, ao estudarmos o o quadrado do log-retorno podemos observar grandes variações. 
+
+## Correlograma
+
+```{r}
+
+acf(qlogr, lag.max = 10, main = "Correlograma quadrado do log-retorno",
+    xlab = "Defasagem", ylab = "Autocorrelação")
+
+```
+
+O correlograma do quadrado do log-retorno demonstra auto-correlações não antes vista no log-retorno (que apresentou baixos valores de auto-correlação).
