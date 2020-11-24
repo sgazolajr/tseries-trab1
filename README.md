@@ -1,2 +1,4 @@
 # tseries-trab1
-Primeiro trabalho da disciplina de Séries Temporais.
+Trabalho 1 da Disciplina: SME0808 - Séries Temporais e Aprendizado Dinâmico - USP - ICMC
+
+Professor orientador: Ricardo Ehlers
